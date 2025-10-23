@@ -1,0 +1,41 @@
+{
+  "name": "@lxstudio/content-automation",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Automatisation de création et publication de contenu TikTok & Instagram pour LX Studio",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.15.0",
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "type-check": "pnpm -r type-check",
+    "test": "pnpm -r test",
+    "clean": "pnpm -r clean && rm -rf node_modules",
+    "api:dev": "pnpm --filter @lxstudio/api dev",
+    "web:dev": "pnpm --filter @lxstudio/web dev",
+    "queue:worker": "pnpm --filter @lxstudio/api queue:worker",
+    "migrate": "pnpm --filter @lxstudio/api migrate",
+    "seed": "pnpm --filter @lxstudio/api seed",
+    "export:n8n": "node scripts/export-n8n.js"
+  },
+  "keywords": [
+    "lxstudio",
+    "content-automation",
+    "tiktok",
+    "instagram",
+    "n8n",
+    "supabase"
+  ],
+  "author": "LX Studio <contact@lxstudio.ch>",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "prettier": "^3.2.4",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.0"
+  }
+}

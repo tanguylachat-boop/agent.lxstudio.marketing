@@ -1,0 +1,53 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Testing
+coverage
+
+# Next.js
+.next/
+out/
+build
+
+# Production
+dist
+*.tsbuildinfo
+
+# Misc
+.DS_Store
+*.pem
+.env
+.env*.local
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-debug.log*
+
+# Logs
+logs
+*.log
+
+# IDEs
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# Temporary
+.turbo
+.cache
+temp
+tmp
+
+# Redis
+dump.rdb
+
+# Supabase
+supabase/.branches
+supabase/.temp

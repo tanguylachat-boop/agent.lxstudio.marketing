@@ -1,0 +1,689 @@
+{
+  "name": "LX Studio - Content Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * 1"
+            }
+          ]
+        }
+      },
+      "name": "Trigger Weekly (Monday 9am)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/api/ideas",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "count",
+              "value": "20"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Generate Ideas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/api/calendar",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "week_start",
+              "value": "={{new Date().toISOString()}}"
+            },
+            {
+              "name": "count",
+              "value": "7"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Generate Calendar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 10 * * *"
+            }
+          ]
+        }
+      },
+      "name": "Trigger Daily (10am)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 500]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/api/script",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "idea_id",
+              "value": "={{$json.idea_id}}"
+            },
+            {
+              "name": "duration_target_s",
+              "value": "15"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Generate Script",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [450, 500]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/api/caption",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "idea_id",
+              "value": "={{$json.idea_id}}"
+            },
+            {
+              "name": "script_text",
+              "value": "={{$json.script.script_text}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Generate Caption",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [650, 500]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/api/assets/compose",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "idea_id",
+              "value": "={{$json.idea_id}}"
+            },
+            {
+              "name": "script_id",
+              "value": "={{$json.script_id}}"
+            },
+            {
+              "name": "shots",
+              "value": "={{JSON.stringify($json.shots)}}"
+            },
+            {
+              "name": "subtitles",
+              "value": "true"
+            },
+            {
+              "name": "watermark",
+              "value": "{\"enabled\":true,\"text\":\"LX Studio\",\"position\":\"bottom-right\"}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Compose Assets",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [850, 500]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/api/schedule/create",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "jobs",
+              "value": "={{JSON.stringify($json.jobs)}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Schedule Posts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1050, 500]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$env.PUBLISH_MODE}}",
+              "operation": "equals",
+              "value2": "direct"
+            }
+          ]
+        }
+      },
+      "name": "Check Publish Mode",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [250, 700]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/api/publish/instagram",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "asset_id",
+              "value": "={{$json.asset_id}}"
+            },
+            {
+              "name": "caption_id",
+              "value": "={{$json.caption_id}}"
+            },
+            {
+              "name": "video_url",
+              "value": "={{$json.video_url}}"
+            },
+            {
+              "name": "caption_text",
+              "value": "={{$json.caption_text}}"
+            },
+            {
+              "name": "hashtags",
+              "value": "={{JSON.stringify($json.hashtags)}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Publish Instagram (Direct)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [450, 650]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/api/publish/tiktok",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "asset_id",
+              "value": "={{$json.asset_id}}"
+            },
+            {
+              "name": "caption_id",
+              "value": "={{$json.caption_id}}"
+            },
+            {
+              "name": "video_url",
+              "value": "={{$json.video_url}}"
+            },
+            {
+              "name": "caption_text",
+              "value": "={{$json.caption_text}}"
+            },
+            {
+              "name": "hashtags",
+              "value": "={{JSON.stringify($json.hashtags)}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Publish TikTok (Direct)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [450, 750]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.BUFFER_WEBHOOK_URL}}",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "platform",
+              "value": "instagram"
+            },
+            {
+              "name": "video_url",
+              "value": "={{$json.video_url}}"
+            },
+            {
+              "name": "caption",
+              "value": "={{$json.caption_text}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Fallback Buffer (Instagram)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [650, 700]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.BUFFER_WEBHOOK_URL}}",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "platform",
+              "value": "tiktok"
+            },
+            {
+              "name": "video_url",
+              "value": "={{$json.video_url}}"
+            },
+            {
+              "name": "caption",
+              "value": "={{$json.caption_text}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Fallback Buffer (TikTok)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [650, 800]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 20 * * *"
+            }
+          ]
+        }
+      },
+      "name": "Trigger Analytics (8pm daily)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 1000]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/api/analytics/pull",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "platform",
+              "value": "instagram"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Pull Instagram Analytics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [450, 1000]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/api/analytics/pull",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "platform",
+              "value": "tiktok"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Pull TikTok Analytics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [650, 1000]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "leads",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "name": "Webhook - Leads",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 1200],
+      "webhookId": "lxstudio-leads"
+    },
+    {
+      "parameters": {
+        "url": "={{$env.API_BASE_URL}}/api/leads/webhook",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "source",
+              "value": "={{$json.body.source}}"
+            },
+            {
+              "name": "name",
+              "value": "={{$json.body.name}}"
+            },
+            {
+              "name": "email",
+              "value": "={{$json.body.email}}"
+            },
+            {
+              "name": "phone",
+              "value": "={{$json.body.phone}}"
+            },
+            {
+              "name": "message",
+              "value": "={{$json.body.message}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Save Lead to DB",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [450, 1200]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.ALERT_WEBHOOK_URL}}",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "Nouveau lead : ={{$json.name}} (={{$json.email}})"
+            },
+            {
+              "name": "lead",
+              "value": "={{JSON.stringify($json)}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Send Alert (Slack/Discord)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [650, 1200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.error}}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "name": "Check for Errors",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [850, 700]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.ALERT_WEBHOOK_URL}}",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "ERREUR Workflow : ={{$json.error}}"
+            },
+            {
+              "name": "context",
+              "value": "={{JSON.stringify($json)}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Send Error Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1050, 750]
+    }
+  ],
+  "connections": {
+    "Trigger Weekly (Monday 9am)": {
+      "main": [
+        [
+          {
+            "node": "Generate Ideas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Ideas": {
+      "main": [
+        [
+          {
+            "node": "Generate Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger Daily (10am)": {
+      "main": [
+        [
+          {
+            "node": "Generate Script",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Script": {
+      "main": [
+        [
+          {
+            "node": "Generate Caption",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Caption": {
+      "main": [
+        [
+          {
+            "node": "Compose Assets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compose Assets": {
+      "main": [
+        [
+          {
+            "node": "Schedule Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Posts": {
+      "main": [
+        [
+          {
+            "node": "Check Publish Mode",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Publish Mode": {
+      "main": [
+        [
+          {
+            "node": "Publish Instagram (Direct)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Publish TikTok (Direct)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallback Buffer (Instagram)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fallback Buffer (TikTok)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publish Instagram (Direct)": {
+      "main": [
+        [
+          {
+            "node": "Check for Errors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publish TikTok (Direct)": {
+      "main": [
+        [
+          {
+            "node": "Check for Errors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check for Errors": {
+      "main": [
+        [
+          {
+            "node": "Send Error Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger Analytics (8pm daily)": {
+      "main": [
+        [
+          {
+            "node": "Pull Instagram Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pull Instagram Analytics": {
+      "main": [
+        [
+          {
+            "node": "Pull TikTok Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook - Leads": {
+      "main": [
+        [
+          {
+            "node": "Save Lead to DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Lead to DB": {
+      "main": [
+        [
+          {
+            "node": "Send Alert (Slack/Discord)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-01-15T00:00:00.000Z",
+  "versionId": "1"
+}
