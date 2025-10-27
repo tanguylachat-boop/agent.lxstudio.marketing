@@ -1,0 +1,466 @@
+{
+  "name": "LX Studio Auto Reels (Make.com)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 10,18 * * *"
+            }
+          ]
+        }
+      },
+      "id": "cron-trigger",
+      "name": "Cron Daily (10:00 & 18:00)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const workDir = `/tmp/lxstudio_${Date.now()}`;\nconst fs = require('fs');\nfs.mkdirSync(workDir, { recursive: true });\n\nreturn [{\n  json: {\n    workDir,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "init-job",
+      "name": "Initialize Job",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.TRENDS_API_URL}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "fetch-trends",
+      "name": "Fetch Trends",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const trends = $input.first().json;\n\nconst topics = trends.topics || [\n  'IA et automatisation pour PME',\n  'SEO local en 2025',\n  'Agents IA conversationnels'\n];\n\nconst systemPrompt = `Tu es un créateur de contenus viral pour une agence web/IA premium (LX Studio). Objectif : générer des scripts courts (20-35s) qui convertissent en DM (\"AGENT\" ou \"SITE\"). Style : clair, autoritaire, élégant (codes luxe), bénéfices concrets, social proof, CTA explicite, FR natif, zéro fluff.`;\n\nconst userPrompt = `Crée un script vidéo viral de 20-35 secondes pour LX Studio.\n\nTendances actuelles : ${topics.join(', ')}\nNiche : Automatisation IA Business\nPersona : Dirigeant PME (20-100 employés)\n\nRéponds en JSON strict :\n{\n  \"HOOK_A\": \"...\",\n  \"HOOK_B\": \"...\",\n  \"SCRIPT\": \"...\",\n  \"CTA\": \"DM 'AGENT' ou 'SITE' pour un audit gratuit\",\n  \"HASHTAGS\": [\"#luxe\",\"#automation\",\"#seo\",\"#ai\"],\n  \"DESCRIPTION\": \"...\"\n}`;\n\nreturn [{\n  json: {\n    systemPrompt,\n    userPrompt,\n    workDir: $json.workDir\n  }\n}];"
+      },
+      "id": "build-prompt",
+      "name": "Build Claude Prompt",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "claude-3-5-sonnet-20241022"
+            },
+            {
+              "name": "max_tokens",
+              "value": "2000"
+            },
+            {
+              "name": "system",
+              "value": "={{$json.systemPrompt}}"
+            },
+            {
+              "name": "messages",
+              "value": "=[{\"role\":\"user\",\"content\":\"{{$json.userPrompt}}\"}]"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "claude-generate",
+      "name": "Claude Generate Script",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const response = $input.first().json;\nconst content = response.content[0].text;\nconst jsonMatch = content.match(/\\{[\\s\\S]*\\}/);\nconst parsed = JSON.parse(jsonMatch[0]);\n\nconst variant = Math.random() < 0.5 ? 'A' : 'B';\nconst hook = variant === 'A' ? parsed.HOOK_A : parsed.HOOK_B;\n\nreturn [{\n  json: {\n    hookA: parsed.HOOK_A,\n    hookB: parsed.HOOK_B,\n    hook,\n    variant,\n    script: parsed.SCRIPT,\n    cta: parsed.CTA,\n    hashtags: parsed.HASHTAGS,\n    description: parsed.DESCRIPTION,\n    workDir: $('build-prompt').first().json.workDir\n  }\n}];"
+      },
+      "id": "parse-script",
+      "name": "Parse & Select Hook",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.elevenlabs.io/v1/text-to-speech/{{$env.ELEVEN_VOICE_ID}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{$json.script}}"
+            },
+            {
+              "name": "model_id",
+              "value": "eleven_multilingual_v2"
+            },
+            {
+              "name": "voice_settings",
+              "value": "={\"stability\":0.5,\"similarity_boost\":0.75}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000,
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "elevenlabs-tts",
+      "name": "ElevenLabs TTS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1450, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://api.runwayml.com/v1/gen3/video",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "prompt",
+              "value": "Professional B-roll footage for luxury tech agency. Modern, elegant, premium. Abstract tech visuals, smooth motion, no people."
+            },
+            {
+              "name": "duration",
+              "value": "5"
+            },
+            {
+              "name": "aspect_ratio",
+              "value": "9:16"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "runway-create",
+      "name": "Runway Create Video",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1450, 500]
+    },
+    {
+      "parameters": {
+        "unit": "seconds",
+        "amount": 10
+      },
+      "id": "wait-runway",
+      "name": "Wait for Runway",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [1650, 500]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.runwayml.com/v1/gen3/video/{{$json.id}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "runway-status",
+      "name": "Check Runway Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1850, 500]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.status}}",
+              "operation": "equals",
+              "value2": "SUCCEEDED"
+            }
+          ]
+        }
+      },
+      "id": "check-ready",
+      "name": "Video Ready?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [2050, 500]
+    },
+    {
+      "parameters": {
+        "functionCode": "const audioData = $('elevenlabs-tts').first().binary.data;\nconst videoUrl = $json.output.url;\nconst scriptData = $('parse-script').first().json;\nconst workDir = scriptData.workDir;\n\nconst fs = require('fs');\nconst audioPath = `${workDir}/audio.mp3`;\nfs.writeFileSync(audioPath, Buffer.from(audioData, 'base64'));\n\nreturn [{\n  json: {\n    videoUrl,\n    audioPath,\n    script: scriptData.script,\n    hook: scriptData.hook,\n    variant: scriptData.variant,\n    cta: scriptData.cta,\n    hashtags: scriptData.hashtags,\n    description: scriptData.description,\n    workDir\n  }\n}];"
+      },
+      "id": "prepare-compose",
+      "name": "Prepare Composition",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [2250, 400]
+    },
+    {
+      "parameters": {
+        "command": "=cd {{$json.workDir}} && ffmpeg -i {{$json.videoUrl}} -i {{$json.audioPath}} -c:v libx264 -c:a aac -shortest -pix_fmt yuv420p final.mp4"
+      },
+      "id": "ffmpeg-compose",
+      "name": "FFmpeg Compose",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [2450, 400]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.MAKE_WEBHOOK_IG}}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "platform",
+              "value": "instagram"
+            },
+            {
+              "name": "video_url",
+              "value": "={{$json.videoUrl}}"
+            },
+            {
+              "name": "caption",
+              "value": "={{$json.description}}"
+            },
+            {
+              "name": "hashtags",
+              "value": "={{$json.hashtags}}"
+            },
+            {
+              "name": "alt_text",
+              "value": "=LX Studio — {{$json.description}}"
+            },
+            {
+              "name": "metadata",
+              "value": "={\"hook\":\"{{$json.hook}}\",\"variant\":\"{{$json.variant}}\",\"cta\":\"{{$json.cta}}\"}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "publish-instagram",
+      "name": "Publish Instagram (Make)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [2650, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.MAKE_WEBHOOK_TT}}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "platform",
+              "value": "tiktok"
+            },
+            {
+              "name": "video_url",
+              "value": "={{$json.videoUrl}}"
+            },
+            {
+              "name": "caption",
+              "value": "={{$json.description}}"
+            },
+            {
+              "name": "hashtags",
+              "value": "={{$json.hashtags}}"
+            },
+            {
+              "name": "metadata",
+              "value": "={\"hook\":\"{{$json.hook}}\",\"variant\":\"{{$json.variant}}\",\"cta\":\"{{$json.cta}}\"}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "publish-tiktok",
+      "name": "Publish TikTok (Make)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [2650, 500]
+    },
+    {
+      "parameters": {
+        "functionCode": "const igResult = $('publish-instagram').first().json;\nconst ttResult = $('publish-tiktok').first().json;\nconst scriptData = $('prepare-compose').first().json;\n\nreturn [{\n  json: {\n    timestamp: new Date().toISOString(),\n    hook: scriptData.hook,\n    variant: scriptData.variant,\n    platforms: [\n      { platform: 'instagram', postUrl: igResult.post_url, success: true },\n      { platform: 'tiktok', postUrl: ttResult.post_url, success: true }\n    ],\n    hashtags: scriptData.hashtags,\n    cta: scriptData.cta\n  }\n}];"
+      },
+      "id": "prepare-log",
+      "name": "Prepare Log Entry",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [2850, 400]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.SHEETS_API_URL || 'https://sheets.googleapis.com/v4/spreadsheets/' + $env.SHEETS_DOC_ID + '/values/Logs!A:J:append?valueInputOption=RAW'}}",
+        "authentication": "oAuth2",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "values",
+              "value": "=[[\"{{$json.timestamp}}\",\"{{$json.hook}}\",\"{{$json.variant}}\",\"instagram\",\"{{$json.platforms[0].postUrl}}\",\"SUCCESS\"]]"
+            }
+          ]
+        }
+      },
+      "id": "log-sheets",
+      "name": "Log to Sheets",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [3050, 400]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * 1"
+            }
+          ]
+        }
+      },
+      "id": "cron-weekly",
+      "name": "Cron Weekly (Monday 9:00)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 700]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.SHEETS_API_URL || 'https://sheets.googleapis.com/v4/spreadsheets/' + $env.SHEETS_DOC_ID + '/values/Logs!A:J'}}",
+        "authentication": "oAuth2"
+      },
+      "id": "fetch-logs",
+      "name": "Fetch Logs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [450, 700]
+    },
+    {
+      "parameters": {
+        "functionCode": "const rows = $json.values || [];\nconst hookScores = {};\n\nfor (let i = 1; i < rows.length; i++) {\n  const [, hook, , , , success] = rows[i];\n  if (success === 'SUCCESS' && hook) {\n    hookScores[hook] = (hookScores[hook] || 0) + 1;\n  }\n}\n\nconst topHooks = Object.entries(hookScores)\n  .sort((a, b) => b[1] - a[1])\n  .slice(0, 10)\n  .map(([hook]) => hook);\n\nreturn [{\n  json: {\n    topHooks\n  }\n}];"
+      },
+      "id": "analyze-hooks",
+      "name": "Analyze Top Hooks",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [650, 700]
+    },
+    {
+      "parameters": {
+        "command": "=node /path/to/agent/dist/update_prompt.js '{{JSON.stringify($json.topHooks)}}'"
+      },
+      "id": "update-prompt",
+      "name": "Update Prompt Template",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [850, 700]
+    }
+  ],
+  "connections": {
+    "Cron Daily (10:00 & 18:00)": {
+      "main": [[{ "node": "Initialize Job", "type": "main", "index": 0 }]]
+    },
+    "Initialize Job": {
+      "main": [[{ "node": "Fetch Trends", "type": "main", "index": 0 }]]
+    },
+    "Fetch Trends": {
+      "main": [[{ "node": "Build Claude Prompt", "type": "main", "index": 0 }]]
+    },
+    "Build Claude Prompt": {
+      "main": [[{ "node": "Claude Generate Script", "type": "main", "index": 0 }]]
+    },
+    "Claude Generate Script": {
+      "main": [[{ "node": "Parse & Select Hook", "type": "main", "index": 0 }]]
+    },
+    "Parse & Select Hook": {
+      "main": [
+        [
+          { "node": "ElevenLabs TTS", "type": "main", "index": 0 },
+          { "node": "Runway Create Video", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Runway Create Video": {
+      "main": [[{ "node": "Wait for Runway", "type": "main", "index": 0 }]]
+    },
+    "Wait for Runway": {
+      "main": [[{ "node": "Check Runway Status", "type": "main", "index": 0 }]]
+    },
+    "Check Runway Status": {
+      "main": [[{ "node": "Video Ready?", "type": "main", "index": 0 }]]
+    },
+    "Video Ready?": {
+      "main": [
+        [{ "node": "Prepare Composition", "type": "main", "index": 0 }],
+        [{ "node": "Wait for Runway", "type": "main", "index": 0 }]
+      ]
+    },
+    "Prepare Composition": {
+      "main": [[{ "node": "FFmpeg Compose", "type": "main", "index": 0 }]]
+    },
+    "FFmpeg Compose": {
+      "main": [
+        [
+          { "node": "Publish Instagram (Make)", "type": "main", "index": 0 },
+          { "node": "Publish TikTok (Make)", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Publish Instagram (Make)": {
+      "main": [[{ "node": "Prepare Log Entry", "type": "main", "index": 0 }]]
+    },
+    "Publish TikTok (Make)": {
+      "main": [[{ "node": "Prepare Log Entry", "type": "main", "index": 0 }]]
+    },
+    "Prepare Log Entry": {
+      "main": [[{ "node": "Log to Sheets", "type": "main", "index": 0 }]]
+    },
+    "Cron Weekly (Monday 9:00)": {
+      "main": [[{ "node": "Fetch Logs", "type": "main", "index": 0 }]]
+    },
+    "Fetch Logs": {
+      "main": [[{ "node": "Analyze Top Hooks", "type": "main", "index": 0 }]]
+    },
+    "Analyze Top Hooks": {
+      "main": [[{ "node": "Update Prompt Template", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "timezone": "Europe/Zurich"
+  }
+}

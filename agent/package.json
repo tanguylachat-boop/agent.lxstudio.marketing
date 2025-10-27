@@ -1,0 +1,33 @@
+{
+  "name": "lxstudio-ai-agent",
+  "version": "1.0.0",
+  "description": "LX Studio AI Agent for automated TikTok & Instagram Reels via Make.com",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node src/index.ts",
+    "start": "node dist/index.js",
+    "smoke": "ts-node scripts/smoke.ts",
+    "test": "npm run build && npm run smoke"
+  },
+  "keywords": ["ai", "automation", "tiktok", "instagram", "make", "n8n"],
+  "author": "LX Studio",
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.27.0",
+    "axios": "^1.6.0",
+    "dotenv": "^16.3.1",
+    "fluent-ffmpeg": "^2.1.2",
+    "googleapis": "^128.0.0",
+    "form-data": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/fluent-ffmpeg": "^2.1.24",
+    "typescript": "^5.3.0",
+    "ts-node": "^10.9.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
